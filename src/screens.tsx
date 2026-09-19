@@ -418,8 +418,15 @@ export function GameScreenUI({
 
   const progressPercent = Math.min(100, Math.round((score / targetScore) * 100));
 
+  const bgIndex = (Math.floor((levelNumber - 1) / 10) % 10) + 1;
+  
   return (
-    <div className="relative w-full min-h-screen bg-surface text-on-surface flex flex-col justify-between overflow-hidden select-none touch-none">
+    <div
+      className="relative w-full min-h-screen text-on-surface flex flex-col justify-between overflow-hidden select-none touch-none bg-cover bg-center"
+      style={{ backgroundImage: `url(${ASSET}bg_level_${bgIndex}.png)` }}
+    >
+      <div className="absolute inset-0 bg-surface/80" /> {/* Dark overlay for readability */}
+      
       {/* Dynamic Ambient Background Glows */}
       <div className="fixed inset-0 pointer-events-none opacity-40 z-0">
         <div className="absolute -top-12 left-1/4 w-72 h-72 bg-primary-container/20 rounded-full blur-3xl" />
@@ -511,8 +518,8 @@ export function GameScreenUI({
       </header>
 
       {/* 2. GAME ARENA: 6x6 PUZZLE GRID */}
-      <main className="relative z-20 w-full max-w-[400px] mx-auto px-margin py-1 flex items-center justify-center flex-grow">
-        <div className="relative w-full aspect-square p-2 bg-gradient-to-b from-surface-container-high/60 to-surface-container-lowest/90 rounded-2xl shadow-2xl backdrop-blur-2xl flex items-center justify-center border border-white/10">
+      <main className="relative z-20 w-full max-w-[400px] mx-auto px-margin py-1 flex items-center justify-center flex-grow flex-shrink min-h-0">
+        <div className="relative aspect-square w-full max-h-full p-2 bg-gradient-to-b from-surface-container-high/60 to-surface-container-lowest/90 rounded-2xl shadow-2xl backdrop-blur-2xl flex items-center justify-center border border-white/10" style={{ maxHeight: 'calc(100vh - 280px)', maxWidth: 'calc(100vh - 280px)' }}>
           {/* Dynamic Link Path Vector SVG */}
           {selected.length > 1 && (
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" viewBox="0 0 100 100" preserveAspectRatio="none">
