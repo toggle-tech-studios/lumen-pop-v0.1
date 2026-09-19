@@ -18,6 +18,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { StartScreenUI, MapScreenUI, GameScreenUI, ResultScreenUI } from './screens';
 
 type Screen = 'loading' | 'start' | 'home' | 'level-loading' | 'game' | 'settings';
 type LumenColor = 'solar' | 'verdant' | 'terra' | 'nova' | 'cosmic' | 'aether' | 'blaze';
@@ -33,7 +34,7 @@ type SavedProgress = {
 };
 type LineDirection = { row: number; col: number };
 
-const ASSET = './assets/';
+export const ASSET = './assets/';
 const BOARD_SIZE = 6;
 const colors: LumenColor[] = ['solar', 'verdant', 'terra', 'nova', 'cosmic', 'aether', 'blaze'];
 const lumenAssets: Record<LumenColor, { opened: string; closed: string }> = {
@@ -813,39 +814,30 @@ function GameScreen({ levelNumber, progress, onBack, onSettings, onComplete, onC
     soundRef.current?.dispose();
   }, []);
 
+    const boardElements = board.map((tile, index) => <LumenTile key={`${tile.id}-${index}`} tile={tile} index={index} selected={selected.includes(index)} popping={popping.includes(index)} fresh={freshTiles.includes(index)} onPointerDown={(event) => onTilePointerDown(index, event)} />);
+
   return (
-    <div className="screen game-shell">
-      <div className="world-bg" style={{ backgroundImage: `url(${ASSET}${backgrounds[Math.min(backgrounds.length - 1, Math.floor((levelNumber - 1) / 2))]})`, opacity: .28 }} />
-      <Topbar onBack={onBack} onSettings={onSettings} label={config.world.toUpperCase()} />
-      <main className="game-content">
-        <section className="level-heading"><div><h1>Level {levelNumber} <span className="text-cyan-200">·</span> {config.title}</h1><p>{activeBooster ? `Choose a cell for your ${activeBooster}` : config.lesson}</p></div><button className="pause-btn" onClick={() => { clearActiveChain(); setActiveBooster(null); setOverlay('pause'); }} aria-label="Pause game"><Pause size={18} fill="currentColor" /></button></section>
-        <section className="stats-row">
-          <div className="stat-box"><div className="stat-label">Target score</div><div className="stat-value">{config.targetScore.toLocaleString()}</div><div className="progress-track milestone-track"><i style={{ width: `${progressPercent}%` }} /><span className={stars >= 1 ? 'milestone on' : 'milestone'} style={{ left: '33%' }}>★</span><span className={stars >= 2 ? 'milestone on' : 'milestone'} style={{ left: '66%' }}>★</span><span className={stars >= 3 ? 'milestone on' : 'milestone'} style={{ left: '100%' }}>★</span></div><small className="score-readout">{score.toLocaleString()} glow</small></div>
-          <div className="stat-box"><div className="stat-label">Stars</div><div className="stars" aria-label={`${stars} stars`}>{[1, 2, 3].map((star) => <Star key={star} className={stars >= star ? 'star on' : 'star'} fill="currentColor" size={18} />)}</div><div className="stat-note">33 · 66 · 100%</div></div>
-          <div className="stat-box"><div className="stat-label">Moves remaining</div><div className="stat-value text-yellow-200">{moves}</div><div className="stat-note">Make it glow</div></div>
-        </section>
-        {levelNumber <= 2 && <div className="play-guide"><span className="guide-step"><b>1</b> Touch</span><span className="guide-line" /><span className="guide-step"><b>2</b> Drag straight</span><span className="guide-line" /><span className="guide-step"><b>3</b> Release</span></div>}
-        <section className={`board-wrap ${dragging ? 'is-linking' : ''} ${effect ? `effect-${effect}` : ''}`} ref={boardRef} onPointerMove={onBoardPointerMove}>
-          <div className="board">
-            {board.map((tile, index) => <LumenTile key={`${tile.id}-${index}`} tile={tile} index={index} selected={selected.includes(index)} popping={popping.includes(index)} fresh={freshTiles.includes(index)} onPointerDown={(event) => onTilePointerDown(index, event)} />)}
-          </div>
-          <ChainTrail selected={selected} activeType={activeType} />
-          {effect && <div className="board-effect" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>}
-          {dragging && selected.length > 1 && <div className="chain-count"><b>{selected.length}</b><small>{selected.length >= 5 ? 'charge' : 'link'}</small></div>}
-        </section>
-        <p className="hint"><Sparkles size={12} className="mr-1 inline text-yellow-200" /> {selected.length >= 2 ? `${selected.length} linked · ${selected.length >= 3 ? 'release to pop' : 'find one more'}` : 'Drag through matching Lumens to link 3 or more'}</p>
-        <div className="booster-row">
-          <Booster kind="shuffle" onClick={() => selectBooster('shuffle')} disabled={busyRef.current} />
-          <Booster kind="bomb" onClick={() => selectBooster('bomb')} disabled={busyRef.current} />
-          <Booster kind="burst" onClick={() => selectBooster('burst')} disabled={busyRef.current} />
-        </div>
-        <div className="currency-line"><span><span className="shard-icon" /> {coins.toLocaleString()} shards</span><span>{activeBooster ? 'Tap a Lumen to aim' : 'Prism Vortexes appear after 5-link charges'}</span></div>
-      </main>
-      {toast && <div className="game-toast" role="status">{toast}</div>}
-      {overlay && <ResultOverlay type={overlay} score={score} target={config.targetScore} stars={stars} onPrimary={overlay === 'complete' ? onNextLevel : overlay === 'fail' ? resetGame : () => setOverlay(null)} onSecondary={overlay === 'complete' ? resetGame : overlay === 'pause' ? onBack : undefined} onClose={() => setOverlay(null)} />}
-    </div>
+    <>
+      <GameScreenUI
+        levelNumber={levelNumber} config={config} score={score} targetScore={config.targetScore}
+        stars={stars} moves={moves} coins={coins} activeBooster={activeBooster}
+        dragging={dragging} selected={selected} effect={effect} popping={popping}
+        freshTiles={freshTiles} boardElements={boardElements} activeType={activeType}
+        onBack={onBack} onSettings={onSettings} onPause={() => { clearActiveChain(); setActiveBooster(null); setOverlay('pause'); }}
+        selectBooster={selectBooster} boardRef={boardRef} onBoardPointerMove={onBoardPointerMove}
+      />
+      {overlay && <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <ResultScreenUI
+          score={score} target={config.targetScore} stars={stars}
+          onNextLevel={overlay === 'complete' ? onNextLevel : overlay === 'fail' ? resetGame : () => setOverlay(null)}
+          onReplay={resetGame}
+          onMap={onBack}
+        />
+      </div>}
+    </>
   );
 }
+
 
 function ResultOverlay({ type, score, target, stars, onPrimary, onSecondary, onClose }: { type: 'complete' | 'fail' | 'pause'; score: number; target: number; stars: number; onPrimary: () => void; onSecondary?: () => void; onClose: () => void }) {
   const won = type === 'complete';
