@@ -18,7 +18,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { StartScreenUI, MapScreenUI, GameScreenUI, ResultScreenUI } from './screens';
+import { StartScreenUI, MapScreenUI, GameScreenUI, ResultScreenUI, SettingsScreenUI } from './screens';
 
 type Screen = 'loading' | 'start' | 'home' | 'level-loading' | 'game' | 'settings';
 type LumenColor = 'solar' | 'verdant' | 'terra' | 'nova' | 'cosmic' | 'aether' | 'blaze';
@@ -491,8 +491,25 @@ function HomeScreen({ progress, onGame, onSettings, onGift }: { progress: SavedP
 function LumenTile({ tile, index, selected, popping, fresh, onPointerDown }: { tile: Tile; index: number; selected: boolean; popping: boolean; fresh?: boolean; onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void }) {
   const artwork = tile.fusion ? fusionOrbAsset : lumenAssets[tile.color][selected ? 'opened' : 'closed'];
   return (
-    <button data-index={index} className={`tile ${selected ? 'selected' : ''} ${popping ? 'popping' : ''} ${fresh ? 'fresh-tile' : ''} ${tile.fusion ? 'fusion-tile' : ''}`} onPointerDown={onPointerDown} aria-label={`${tile.fusion ? 'Prism Vortex, ' : ''}${tile.color} Lumen`}>
-      <img className={tile.fusion ? 'fusion-art' : 'lumen-art'} src={`${ASSET}${artwork}`} alt="" draggable="false" />
+    <button
+      data-index={index}
+      onPointerDown={onPointerDown}
+      aria-label={`${tile.fusion ? 'Prism Vortex, ' : ''}${tile.color} Lumen`}
+      className={`relative aspect-square rounded-xl p-1 flex items-center justify-center transition-all touch-none select-none ${
+        popping
+          ? 'scale-0 opacity-0 transition-all duration-300'
+          : selected
+          ? 'bg-surface-bright ring-2 ring-primary-container shadow-[0_0_15px_rgba(0,240,255,0.7)] scale-105 z-20'
+          : 'bg-surface-container-low/90 hover:bg-surface-container-high/90 shadow-inner border border-white/5'
+      }`}
+    >
+      <img
+        src={`${ASSET}${artwork}`}
+        alt=""
+        draggable={false}
+        className={`w-full h-full object-contain pointer-events-none drop-shadow ${tile.fusion ? 'animate-spin' : ''}`}
+        style={tile.fusion ? { animationDuration: '10s' } : undefined}
+      />
     </button>
   );
 }
@@ -826,14 +843,20 @@ function GameScreen({ levelNumber, progress, onBack, onSettings, onComplete, onC
         onBack={onBack} onSettings={onSettings} onPause={() => { clearActiveChain(); setActiveBooster(null); setOverlay('pause'); }}
         selectBooster={selectBooster} boardRef={boardRef} onBoardPointerMove={onBoardPointerMove}
       />
-      {overlay && <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <ResultScreenUI
-          score={score} target={config.targetScore} stars={stars}
-          onNextLevel={overlay === 'complete' ? onNextLevel : overlay === 'fail' ? resetGame : () => setOverlay(null)}
-          onReplay={resetGame}
-          onMap={onBack}
-        />
-      </div>}
+      {overlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+          <ResultScreenUI
+            type={overlay}
+            levelNumber={levelNumber}
+            score={score}
+            target={config.targetScore}
+            stars={stars}
+            onNextLevel={overlay === 'complete' ? onNextLevel : overlay === 'fail' ? resetGame : () => setOverlay(null)}
+            onReplay={resetGame}
+            onMap={onBack}
+          />
+        </div>
+      )}
     </>
   );
 }
@@ -879,13 +902,55 @@ function App() {
     setLevel(destination);
     setScreen('level-loading');
   };
+  const totalStars = useMemo(() => {
+    return Object.values(progress.completed).reduce((acc, curr) => acc + (curr?.stars || 0), 0);
+  }, [progress.completed]);
+
   const renderScreen = () => {
     if (screen === 'loading') return <LoadingScreen onDone={finishLoading} />;
-    if (screen === 'start') return <StartScreen onStart={() => setScreen('home')} />;
-    if (screen === 'settings') return <SettingsScreen progress={progress} onChange={updateProgress} onBack={() => setScreen('home')} />;
+    if (screen === 'start') {
+      return (
+        <StartScreenUI
+          onStart={() => setScreen('home')}
+          onSettings={() => setScreen('settings')}
+          coins={progress.coins}
+          musicEnabled={progress.music}
+          onToggleMusic={() => updateProgress({ ...progress, music: !progress.music })}
+          onClaimGift={claimDailyGift}
+          giftClaimed={progress.dailyGiftClaimedOn === todayKey()}
+        />
+      );
+    }
+    if (screen === 'settings') {
+      return <SettingsScreenUI progress={progress} onChange={updateProgress} onBack={() => setScreen('home')} />;
+    }
     if (screen === 'level-loading') return <LevelLoadingScreen level={level} onReady={() => setScreen('game')} />;
-    if (screen === 'game') return <GameScreen key={level} levelNumber={level} progress={progress} onBack={() => setScreen('home')} onSettings={() => setScreen('settings')} onComplete={completeLevel} onCoinsChange={(coins) => updateProgress({ ...progress, coins })} onNextLevel={() => openLevel(level + 1)} />;
-    return <HomeScreen progress={progress} onGame={openLevel} onSettings={() => setScreen('settings')} onGift={claimDailyGift} />;
+    if (screen === 'game') {
+      return (
+        <GameScreen
+          key={level}
+          levelNumber={level}
+          progress={progress}
+          onBack={() => setScreen('home')}
+          onSettings={() => setScreen('settings')}
+          onComplete={completeLevel}
+          onCoinsChange={(coins) => updateProgress({ ...progress, coins })}
+          onNextLevel={() => openLevel(level + 1)}
+        />
+      );
+    }
+    return (
+      <MapScreenUI
+        onPlay={(lvl: number) => openLevel(lvl)}
+        onSettings={() => setScreen('settings')}
+        latest={progress.highestUnlocked}
+        coins={progress.coins}
+        starsCount={totalStars}
+        musicEnabled={progress.music}
+        onToggleMusic={() => updateProgress({ ...progress, music: !progress.music })}
+        completed={progress.completed}
+      />
+    );
   };
   return <><MusicLayer screen={screen} enabled={progress.music} />{renderScreen()}</>;
 }
